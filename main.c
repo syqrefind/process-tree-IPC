@@ -17,10 +17,15 @@ int sum_second_half;
 //int * sorted_arr_pt;
 int min_value = INT_MIN;
 int max_value = INT_MAX;
-
+sig_atomic_t sigusr1_count = 0;
+sig_atomic_t sigusr2_count = 0;
 
 // Defines the signal handler
-static void handler1 (int signum, siginfo_t *siginfo, void *context);
+static void handler1 (int signum, siginfo_t *info, void *context);
+// Alternative handler  for SIGUSR1
+//void handler(int signum);
+// Alternative handler for SIGUSR2
+void handler_usr2(int signum);
 // Find the sum of the firt half or the second half of an array
 int sum(int arr[], int option);
 // Quicksort an array
@@ -43,47 +48,73 @@ int main(int argc, const char * argv[]) {
     //sorted_arr_pt = (int*)malloc(1000*sizeof(int));
 
 
+    // Signal Action
     struct sigaction act;
+    // sigemptyset(&act.sa_mask);
+    // act.sa_sigaction = &handler1;
+    // act.sa_flags = SA_SIGINFO;
+    memset (&act, 0, sizeof (act));
     sigemptyset(&act.sa_mask);
     act.sa_sigaction = &handler1;
     act.sa_flags = SA_SIGINFO;
-
+    sigaction (SIGUSR1, &act, NULL);
+    sigaction (SIGUSR2, &act, NULL);
 
     //int numbers[1000];
 	int size=0;
 	FILE *nums = fopen("in1000.txt", "r");
 	while(fscanf(nums, "%d\n", &arr_pt[size++])!=EOF);
 	fclose(nums);
-	FILE *output= fopen("out1000c.txt", "w+");
+	//FILE *output= fopen("out1000c.txt", "w+");
     //printArray(arr_pt, 1000);
 
 
     pid_t pid, pid1, pid2, pid3, pid4, pid5;
     pid=fork();
     if (pid==0){//sum
-        // Variable indicates sum 1 is received
-        bool received_sum_1 = false;
-        bool received_sum_2 = false;
-      int parent=getppid();//parent pid
+        //bool received_sum_1 = false;
+        //bool received_sum_2 = false;
+      //int parent=getppid();//parent pid
       pid1=fork();
       if(pid1==0){//sum 1
         sum_first_half=sum(arr_pt,pid1);//pid1==0, first half
-        if(kill(getppid(), SIGUSR1) == 0) {
-            printf("signal 1 sent successfully!!\n");
-            //printf("%d\n",parent);
+        printf("sum1: the sum of first half is %d\n", sum_first_half);
+        union sigval value0;
+        value0.sival_int=500;
+        value0.sival_ptr=NULL;
+
+        sigqueue(getppid(),SIGUSR1,value0);
+        if(sigqueue(getppid(),SIGUSR1,value0) == 0) {
+              printf("signal sent successfully!!\n");
         }
         else {
-            perror("Kill Error.\n");
+              perror("signal failed:");
         }
+
+
+        // if(kill(getppid(), SIGUSR1) == 0) {
+        //     printf("signal 1 sent successfully!!\n");
+        //     //printf("%d\n",parent);
+        // }
+        // else {
+        //     perror("Kill Error.\n");
+        // }
       }
       else if (pid1>0){//sum
 
-          printf("The pid of sum %d\n", getpid());
+          //printf("sum after spawning sum1 :The pid of sum %d\n", getpid());
+          //int a = waitpid(pid1,NULL, 0);//first sum
+          //printf("a is %d\n", a);
+          // busy wait until SIGUSR1 is receivd once
+          while(sigusr1_count!=1)
+              ;
+          printf("sigusr1 is received %dth\n", sigusr1_count);
         pid5=fork();
         if (pid5==0){//sum 2
-          sum_second_half=sum(arr_pt,pid1);//pid1!=0, second half
-          printf("The pid of the parent sum %d\n", getppid());
-          if(kill(getppid(), SIGUSR2) == 0) {
+          sum_second_half=sum(arr_pt,1);//pid1!=0, second half
+          printf("sum2: the sum of second half is %d\n", sum_second_half);
+          //printf("The pid of the parent sum %d\n", getppid());
+          if(kill(getppid(), SIGUSR1) == 0) {
               printf("signal 2 sent successfully!!\n");
               //printf("%d\n",parent);
           }
@@ -94,30 +125,38 @@ int main(int argc, const char * argv[]) {
         else if (pid5>0){//sum
             //waitpid();
             // Sum receives SIGUSR1 and SIGUSR2
-            int a = waitpid(pid1,NULL, 0);//first sum
-            printf("a is %d\n", a);
-            int b = waitpid(pid5,NULL, 0);//second sum
-            printf("b is %d\n", b);
-            if (sigaction(SIGUSR1, &act, NULL) == -1) {
-                perror("sigusr: sigaction");
+
+            // busy wait until receiving SIGUSR2
+            printf("This is parent sum after spawning sum2\n");
+            while(sigusr1_count!=2)
+                ;
+            printf("sigusr1 is received %dth\n", sigusr1_count);
+
+
+
+
+            if(kill(getppid(), SIGUSR2) == 0) {
+                printf("SIGUSR2 to parent is sent successfully!!\n");
+                //printf("%d\n",parent);
             }
-            else if(sigaction(SIGUSR1, &act, NULL)==0){//if no error
-                received_sum_1 = true;
-                printf("signal 1 received\n");
-            }
-            if (sigaction(SIGUSR2, &act, NULL) == -1){
-                perror("sigusr: sigaction");
-            }
-            else if(sigaction(SIGUSR2, &act, NULL) == 0){ // no error
-                received_sum_2 = true;
-                printf("signal 2 received\n");
-            }
-            while(!(received_sum_1)){
-              ;
-            }
-            while(!(received_sum_2)){
-              ;
-            }
+            //printf("the sigusr1 count after waiting for sum2 is %d\n", sigusr1_count);
+            //int b = waitpid(pid5,NULL, 0);//second sum
+            //printf("b is %d\n", b);
+            // if (sigaction(SIGUSR1, &act, NULL) == -1) {
+            //     perror("sigusr: sigaction");
+            // }
+            // else if(sigaction(SIGUSR1, &act, NULL)==0){//if no error
+            //     received_sum_1 = true;
+            //     printf("signal 1 received\n");
+            // }
+            // if (sigaction(SIGUSR2, &act, NULL) == -1){
+            //     perror("sigusr: sigaction");
+            // }
+            // else if(sigaction(SIGUSR2, &act, NULL) == 0){ // no error
+            //     received_sum_2 = true;
+            //     printf("signal 2 received\n");
+            // }
+
               printf("The sum of the numbers is %d.\n", sum_first_half+sum_second_half);
 
             // waitpid(pid1,NULL, 0);//first sum
@@ -130,9 +169,13 @@ int main(int argc, const char * argv[]) {
     }
     else if (pid>0){//parent
 
+        while(sigusr2_count!=1)
+            ;
+        printf("The SIGUSR2 is received, now forking sort\n");
+        //sleep(5);
       pid2=fork();
       if (pid2==0){//sort
-        int parent = getppid();
+        //int parent = getppid();
         pid3=fork();
         if (pid3==0){//min
           //printArray(arr_pt, 1000);
@@ -156,26 +199,37 @@ int main(int argc, const char * argv[]) {
 
       }
     }
-    sleep(1);
+    //sleep(1);
   return 0;
 }
 
 
-static void handler1 (int signum, siginfo_t *siginfo, void *context){
+static void handler1 (int signum, siginfo_t *info, void *context){
     printf("sig no = %d \n", signum);
+    fprintf(stderr," sent value is  = %d \n" ,info->si_value.sival_int);
     if(signum == SIGINT){
         exit(0);
       }
     else if (signum == SIGUSR1){
+        ++sigusr1_count;
         // Do nothing
     }
     else if (signum == SIGUSR2){
+        ++sigusr2_count;
       //Do even more nothing
     }
+    //fprintf(stderr," sent value is  = %d \n" ,info->si_value.sival_int);
     // printf ("Sending PID: %ld, UID: %ld\n",
     //         (long)siginfo->si_pid, (long)siginfo->si_uid);
 }
 
+
+// void handler(int signum){
+//     ++sigusr1_count;
+// }
+void handler_usr2(int signum){
+    ++sigusr2_count;
+}
 
 void sort(int arr[], int size){
     qsort(arr, size, sizeof(int), compare);
@@ -186,17 +240,18 @@ void sort(int arr[], int size){
 
 int sum(int arr[], int option){//option 0 = first half
     int sump=0;
-    if(option==0){
-        for(int i=0;i<500;i++){
+    if (option==0){
+        for (int i=0;i<500;i++){
             sump+=arr[i];
         }
     }
     else {
-      for(int i=500;i<1000;i++){
-            sump=+arr[i];
+      for (int i=500;i<1000;i++){
+            sump+=arr[i];
       }
 
     }
+    printf("The current sum calculated is %d\n", sump);
     return sump;
 }
 
