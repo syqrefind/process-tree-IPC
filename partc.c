@@ -43,6 +43,11 @@ int max(int arr[], int size);
 void handler_sigstop(int signum);
 
 int main(int argc, const char * argv[]) {
+    // create a file to store the pid of the parent process of the program
+    FILE *mypid = fopen("mypid.txt", "w+");
+    fprintf(mypid, "%ld\n", (long)getpid());
+    fclose(mypid);
+
     // Variable indicates both halves of sum are received
 
     // Allocate memory for global pointers
