@@ -50,9 +50,6 @@ int main(int argc, const char * argv[]) {
 
     // Signal Action
     struct sigaction act, act1;
-    // sigemptyset(&act.sa_mask);
-    // act.sa_sigaction = &handler1;
-    // act.sa_flags = SA_SIGINFO;
     memset (&act, 0, sizeof (act));
     //sigemptyset(&act.sa_mask);
     //act.sa_sigaction = &handler1;
@@ -62,29 +59,26 @@ int main(int argc, const char * argv[]) {
     sigaction (SIGUSR1, &act, NULL);
     sigaction (SIGUSR2, &act1, NULL);
 
-    //int numbers[1000];
 	int size=0;
 	FILE *nums = fopen("in1000.txt", "r");
 	while(fscanf(nums, "%d\n", &arr_pt[size++])!=EOF);
 	fclose(nums);
-	//FILE *output= fopen("out1000c.txt", "w+");
-    //printArray(arr_pt, 1000);
 
 
     pid_t pid, pid1, pid2, pid3, pid4, pid5;
     pid=fork();
     if (pid==0){//sum
-        //bool received_sum_1 = false;
-        //bool received_sum_2 = false;
-      //int parent=getppid();//parent pid
       pid1=fork();
       if(pid1==0){//sum 1
         sum_first_half=sum(arr_pt,pid1);//pid1==0, first half
-        printf("sum1: the sum of first half is %d\n", sum_first_half);
-        union sigval value0;
-        value0.sival_int=500;
-        value0.sival_ptr=NULL;
-
+        //printf("sum1: the sum of first half is %d\n", sum_first_half);
+        // union sigval value0;
+        // value0.sival_int=500;
+        // value0.sival_ptr=NULL;
+        // write to a output txt FILE
+        FILE *output= fopen("output.txt", "w+");
+        fprintf(output, "%d\n", sum_first_half);
+        fclose(output);
         // sigqueue(getppid(),SIGUSR1,value0);
         // if(sigqueue(getppid(),SIGUSR1,value0) == 0) {
         //       printf("signal sent successfully!!\n");
@@ -92,32 +86,34 @@ int main(int argc, const char * argv[]) {
         // else {
         //       perror("signal failed:");
         // }
-
-
         if(kill(getppid(), SIGUSR1) == 0) {
-            printf("signal 1 sent successfully!!\n");
-            //printf("%d\n",parent);
+            //printf("signal 1 sent successfully!!\n");
         }
         else {
             perror("Kill Error.\n");
         }
       }
       else if (pid1>0){//sum
-
-          //printf("sum after spawning sum1 :The pid of sum %d\n", getpid());
-          //int a = waitpid(pid1,NULL, 0);//first sum
-          //printf("a is %d\n", a);
           // busy wait until SIGUSR1 is receivd once
           while(sigusr1_count!=1)
               ;
-          printf("sigusr1 is received %dth\n", sigusr1_count);
+          //printf("sigusr1 is received %dth\n", sigusr1_count);
+          // read the sum of first first_half
+          int first_half;
+          //int i = 0;
+          FILE *output = fopen("output.txt", "r");
+          fscanf (output, "%d", &first_half);
+          fclose(output);
         pid5=fork();
         if (pid5==0){//sum 2
           sum_second_half=sum(arr_pt,1);//pid1!=0, second half
-          printf("sum2: the sum of second half is %d\n", sum_second_half);
-          //printf("The pid of the parent sum %d\n", getppid());
+          //printf("sum2: the sum of second half is %d\n", sum_second_half);
+          FILE *output= fopen("output.txt", "w+");
+          fprintf(output, "%d\n", sum_second_half);
+          fclose(output);
+
           if(kill(getppid(), SIGUSR1) == 0) {
-              printf("signal 2 sent successfully!!\n");
+              //printf("signal 2 sent successfully!!\n");
               //printf("%d\n",parent);
           }
           else {
@@ -125,20 +121,25 @@ int main(int argc, const char * argv[]) {
           }
         }
         else if (pid5>0){//sum
-            //waitpid();
             // Sum receives SIGUSR1 and SIGUSR2
 
             // busy wait until receiving SIGUSR2
-            printf("This is parent sum after spawning sum2\n");
+            //printf("This is parent sum after spawning sum2\n");
             while(sigusr1_count!=2)
                 ;
-            printf("sigusr1 is received %dth\n", sigusr1_count);
+            // printf("sigusr1 is received %dth\n", sigusr1_count);
+            // FILE *output= fopen("output.txt", "w+");
+            // fprintf(output, "%d\n", sum_first_half);
+            // fclose(output);
 
-
-
+            int second_half;
+            //int i = 0;
+            FILE *output = fopen("output.txt", "r");
+            fscanf (output, "%d", &second_half);
+            fclose(output);
 
             if(kill(getppid(), SIGUSR2) == 0) {
-                printf("SIGUSR2 to parent is sent successfully!!\n");
+                //printf("SIGUSR2 to parent is sent successfully!!\n");
                 //printf("%d\n",parent);
             }
             //printf("the sigusr1 count after waiting for sum2 is %d\n", sigusr1_count);
@@ -159,7 +160,7 @@ int main(int argc, const char * argv[]) {
             //     printf("signal 2 received\n");
             // }
 
-              printf("The sum of the numbers is %d.\n", sum_first_half+sum_second_half);
+              printf("The sum of the numbers is %d.\n", first_half+second_half);
 
             // waitpid(pid1,NULL, 0);//first sum
             // waitpid(pid5,NULL, 0);//second sum
@@ -173,26 +174,63 @@ int main(int argc, const char * argv[]) {
 
         while(sigusr2_count!=1)
             ;
-        printf("The SIGUSR2 is received, now forking sort\n");
+        //printf("The SIGUSR2 is received, now forking sort\n");
+        sigusr1_count = 0;
+        sigusr2_count = 0;
         //sleep(5);
       pid2=fork();
       if (pid2==0){//sort
-        //int parent = getppid();
+        // before forking min and max, sort will sort the arrary
+        int * sorted_array = arr_pt;
+
+        sort(sorted_array, 1000);
+        //printArray(sorted_array,1000);
         pid3=fork();
         if (pid3==0){//min
-          //printArray(arr_pt, 1000);
-          //printf("Min\n");
-          //printArray(arr_pt, 1000);
-          int minp=min(arr_pt, 1000);
+            // write min into file and nofity `sort` using SIGUSR1
+            FILE *output= fopen("output.txt", "w+");
+            fprintf(output, "%d\n", min(sorted_array, 1000));
+            fclose(output);
+            if(kill(getppid(), SIGUSR1) == 0) {
+                //printf("signal 1 sent successfully!!\n");
+                //printf("%d\n",parent);
+            }
+            else {
+                perror("Kill Error.\n");
+            }
         }
         else if (pid3>0){//sort
+            // read min from file when notified
+            while(sigusr1_count!=1)
+                ;
+            int read_min;
+            FILE *output = fopen("output.txt", "r");
+            fscanf (output, "%d", &read_min);
+            fclose(output);
           pid4=fork();
           if (pid4==0){//max
-            int maxp=max(arr_pt, 1000);
+              // write max into output file and notify `sort` using SIGUSR1
+              FILE *output= fopen("output.txt", "w+");
+              fprintf(output, "%d\n", max(sorted_array, 1000));
+              fclose(output);
+              if(kill(getppid(), SIGUSR1) == 0) {
+                  //printf("signal 2 sent successfully!!\n");
+              }
+              else {
+                  perror("Kill Error.\n");
+              }
+
           }
           else if (pid4>0){//sort
-            sort(arr_pt, 1000);
-            //printArray(arr_pt, 1000);
+            // read max from file when notified
+            // print min and max
+            while(sigusr1_count!=2)
+                ;
+            int read_max;
+            FILE *output = fopen("output.txt", "r");
+            fscanf (output, "%d", &read_max);
+            fclose(output);
+            printf("The min is %d and the max is %d.\n", read_min, read_max);
           }
         }
       }
@@ -253,7 +291,6 @@ int sum(int arr[], int option){//option 0 = first half
       }
 
     }
-    printf("The current sum calculated is %d\n", sump);
     return sump;
 }
 
