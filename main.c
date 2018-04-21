@@ -23,7 +23,7 @@ sig_atomic_t sigusr2_count = 0;
 // Defines the signal handler
 static void handler1 (int signum, siginfo_t *info, void *context);
 // Alternative handler  for SIGUSR1
-//void handler(int signum);
+void handler(int signum);
 // Alternative handler for SIGUSR2
 void handler_usr2(int signum);
 // Find the sum of the firt half or the second half of an array
@@ -49,16 +49,18 @@ int main(int argc, const char * argv[]) {
 
 
     // Signal Action
-    struct sigaction act;
+    struct sigaction act, act1;
     // sigemptyset(&act.sa_mask);
     // act.sa_sigaction = &handler1;
     // act.sa_flags = SA_SIGINFO;
     memset (&act, 0, sizeof (act));
-    sigemptyset(&act.sa_mask);
-    act.sa_sigaction = &handler1;
-    act.sa_flags = SA_SIGINFO;
+    //sigemptyset(&act.sa_mask);
+    //act.sa_sigaction = &handler1;
+    //act.sa_flags = SA_SIGINFO;
+    act.sa_handler=&handler;
+    act1.sa_handler=&handler_usr2;
     sigaction (SIGUSR1, &act, NULL);
-    sigaction (SIGUSR2, &act, NULL);
+    sigaction (SIGUSR2, &act1, NULL);
 
     //int numbers[1000];
 	int size=0;
@@ -83,22 +85,22 @@ int main(int argc, const char * argv[]) {
         value0.sival_int=500;
         value0.sival_ptr=NULL;
 
-        sigqueue(getppid(),SIGUSR1,value0);
-        if(sigqueue(getppid(),SIGUSR1,value0) == 0) {
-              printf("signal sent successfully!!\n");
-        }
-        else {
-              perror("signal failed:");
-        }
-
-
-        // if(kill(getppid(), SIGUSR1) == 0) {
-        //     printf("signal 1 sent successfully!!\n");
-        //     //printf("%d\n",parent);
+        // sigqueue(getppid(),SIGUSR1,value0);
+        // if(sigqueue(getppid(),SIGUSR1,value0) == 0) {
+        //       printf("signal sent successfully!!\n");
         // }
         // else {
-        //     perror("Kill Error.\n");
+        //       perror("signal failed:");
         // }
+
+
+        if(kill(getppid(), SIGUSR1) == 0) {
+            printf("signal 1 sent successfully!!\n");
+            //printf("%d\n",parent);
+        }
+        else {
+            perror("Kill Error.\n");
+        }
       }
       else if (pid1>0){//sum
 
@@ -224,9 +226,9 @@ static void handler1 (int signum, siginfo_t *info, void *context){
 }
 
 
-// void handler(int signum){
-//     ++sigusr1_count;
-// }
+ void handler(int signum){
+    ++sigusr1_count;
+ }
 void handler_usr2(int signum){
     ++sigusr2_count;
 }
