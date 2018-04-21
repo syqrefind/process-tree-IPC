@@ -9,6 +9,8 @@
 #include <signal.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
+
 
 // Globals
 int * arr_pt;
@@ -38,7 +40,7 @@ void printArray(int a[], int size);
 int min(int arr[], int size);
 // Func finds the max of the sorted arrary
 int max(int arr[], int size);
-
+// Func gets the lower of the two
 
 int main(int argc, const char * argv[]) {
     // Variable indicates both halves of sum are received
@@ -86,8 +88,8 @@ int main(int argc, const char * argv[]) {
       }
       else if (pid1>0){//sum
           // busy wait until SIGUSR1 is receivd once
-          while(sigusr1_count!=1)
-              ;
+          // while(sigusr1_count!=1)
+          //     ;
 
           // read the sum of first first_half
           int first_half;
@@ -99,11 +101,11 @@ int main(int argc, const char * argv[]) {
         if (pid5==0){//sum 2
           sum_second_half=sum(arr_pt,1);//pid1!=0, second half
           //printf("sum2: the sum of second half is %d\n", sum_second_half);
-          FILE *output= fopen("output.txt", "w+");
+          FILE *output= fopen("output.txt", "a+");
           fprintf(output, "%d\n", sum_second_half);
           fclose(output);
 
-          if(kill(getppid(), SIGUSR1) == 0) {
+          if(kill(getppid(), SIGUSR2) == 0) {
           }
           else {
               perror("Kill Error.\n");
@@ -114,45 +116,32 @@ int main(int argc, const char * argv[]) {
 
             // busy wait until receiving SIGUSR2
             //printf("This is parent sum after spawning sum2\n");
-            while(sigusr1_count!=2)
-                ;
+            // while(sigusr1_count!=2)
+            //     ;
+
+            while(1){
+                if ((sigusr1_count == 1)&& (sigusr2_count == 1)){
+                    break;
+                }
+            }
             // printf("sigusr1 is received %dth\n", sigusr1_count);
             // FILE *output= fopen("output.txt", "w+");
             // fprintf(output, "%d\n", sum_first_half);
             // fclose(output);
 
+            int first_half;
             int second_half;
             //int i = 0;
             FILE *output = fopen("output.txt", "r");
-            fscanf (output, "%d", &second_half);
+            fscanf(output, "%d\n", &first_half);
+            fscanf(output, "%d\n", &second_half);
             fclose(output);
 
             if(kill(getppid(), SIGUSR2) == 0) {
-                //printf("SIGUSR2 to parent is sent successfully!!\n");
-                //printf("%d\n",parent);
+
             }
-            //printf("the sigusr1 count after waiting for sum2 is %d\n", sigusr1_count);
-            //int b = waitpid(pid5,NULL, 0);//second sum
-            //printf("b is %d\n", b);
-            // if (sigaction(SIGUSR1, &act, NULL) == -1) {
-            //     perror("sigusr: sigaction");
-            // }
-            // else if(sigaction(SIGUSR1, &act, NULL)==0){//if no error
-            //     received_sum_1 = true;
-            //     printf("signal 1 received\n");
-            // }
-            // if (sigaction(SIGUSR2, &act, NULL) == -1){
-            //     perror("sigusr: sigaction");
-            // }
-            // else if(sigaction(SIGUSR2, &act, NULL) == 0){ // no error
-            //     received_sum_2 = true;
-            //     printf("signal 2 received\n");
-            // }
 
               printf("The sum of the numbers is %d.\n", first_half+second_half);
-
-            // waitpid(pid1,NULL, 0);//first sum
-            // waitpid(pid5,NULL, 0);//second sum
         }
       }
       else{
@@ -180,7 +169,7 @@ int main(int argc, const char * argv[]) {
             FILE *output= fopen("output.txt", "w+");
             fprintf(output, "%d\n", min(sorted_array, 1000));
             fclose(output);
-            if(kill(getppid(), SIGUSR1) == 0) {
+            if(kill(getppid(), SIGUSR2) == 0) {
                 //printf("signal 1 sent successfully!!\n");
                 //printf("%d\n",parent);
             }
@@ -190,16 +179,15 @@ int main(int argc, const char * argv[]) {
         }
         else if (pid3>0){//sort
             // read min from file when notified
-            while(sigusr1_count!=1)
-                ;
-            int read_min;
-            FILE *output = fopen("output.txt", "r");
-            fscanf (output, "%d", &read_min);
-            fclose(output);
+            // while(sigusr1_count!=1)
+            //     ;
+            // FILE *output = fopen("output.txt", "r");
+            // fscanf (output, "%d", &read_min);
+            // fclose(output);
           pid4=fork();
           if (pid4==0){//max
               // write max into output file and notify `sort` using SIGUSR1
-              FILE *output= fopen("output.txt", "w+");
+              FILE *output= fopen("output.txt", "a+");
               fprintf(output, "%d\n", max(sorted_array, 1000));
               fclose(output);
               if(kill(getppid(), SIGUSR1) == 0) {
@@ -213,12 +201,25 @@ int main(int argc, const char * argv[]) {
           else if (pid4>0){//sort
             // read max from file when notified
             // print min and max
-            while(sigusr1_count!=2)
-                ;
+            // while(sigusr1_count!=2)
+            //     ;
+            while(1){
+                if ((sigusr1_count == 1)&& (sigusr2_count == 1)){
+                    break;
+                }
+            }
             int read_max;
+            int read_min;
+            int tmp;
             FILE *output = fopen("output.txt", "r");
+            fscanf (output, "%d", &read_min);
             fscanf (output, "%d", &read_max);
             fclose(output);
+            if (read_max < read_min){
+                tmp = read_max;
+                read_max = read_min;
+                read_min = tmp;
+            }
             printf("The min is %d and the max is %d.\n", read_min, read_max);
           }
         }
