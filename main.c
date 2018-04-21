@@ -71,21 +71,12 @@ int main(int argc, const char * argv[]) {
       pid1=fork();
       if(pid1==0){//sum 1
         sum_first_half=sum(arr_pt,pid1);//pid1==0, first half
-        //printf("sum1: the sum of first half is %d\n", sum_first_half);
-        // union sigval value0;
-        // value0.sival_int=500;
-        // value0.sival_ptr=NULL;
         // write to a output txt FILE
         FILE *output= fopen("output.txt", "w+");
         fprintf(output, "%d\n", sum_first_half);
         fclose(output);
-        // sigqueue(getppid(),SIGUSR1,value0);
-        // if(sigqueue(getppid(),SIGUSR1,value0) == 0) {
-        //       printf("signal sent successfully!!\n");
-        // }
-        // else {
-        //       perror("signal failed:");
-        // }
+
+
         if(kill(getppid(), SIGUSR1) == 0) {
             //printf("signal 1 sent successfully!!\n");
         }
@@ -97,7 +88,7 @@ int main(int argc, const char * argv[]) {
           // busy wait until SIGUSR1 is receivd once
           while(sigusr1_count!=1)
               ;
-          //printf("sigusr1 is received %dth\n", sigusr1_count);
+
           // read the sum of first first_half
           int first_half;
           //int i = 0;
@@ -113,8 +104,6 @@ int main(int argc, const char * argv[]) {
           fclose(output);
 
           if(kill(getppid(), SIGUSR1) == 0) {
-              //printf("signal 2 sent successfully!!\n");
-              //printf("%d\n",parent);
           }
           else {
               perror("Kill Error.\n");
